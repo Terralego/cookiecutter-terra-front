@@ -1,0 +1,12 @@
+version: "3"
+x-images:
+  bypass: &bypass
+    command: echo "not started"
+    restart: "no"
+    entrypoint: echo "not started"
+services:
+  {{cookiecutter.app_type}}: {<<: [ *bypass ]}
+  nginx:
+    ports:
+    - "${NGINX_PORT:-8080}:80"
+    - "${NGINX_SSL_PORT:-8443}:443"

@@ -1,0 +1,19 @@
+# node
+node_modules
+
+
+# Docker local settings
+/.env
+/docker.env
+/init
+/netrc
+
+# IDE settings
+.vscode
+
+
+# corpusops & ansible
+*.retry
+/.ansible/scripts/ansible_deploy_env
+/local/
+!/local/regen.sh

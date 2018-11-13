@@ -1,0 +1,4 @@
+[submodule "lib/terra-back"]
+	path = lib/terra-back
+	url = ../../../Terralego/Core/terra-back.git
+	branch = master
