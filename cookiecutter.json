@@ -7,6 +7,12 @@
     "app_type": "node",
     "app_suffix": "-front",
 
+    "scheme": "https",
+    "dev_scheme": "{{cookiecutter.scheme}}",
+    "qa_scheme": "{{cookiecutter.scheme}}",
+    "prod_scheme": "{{cookiecutter.scheme}}",
+    "staging_scheme": "{{cookiecutter.scheme}}",
+
     "dev_front_domain": "dev-terralego-{{cookiecutter.lname}}.{{cookiecutter.tld_domain}}",
     "dev_back_domain": "{{cookiecutter.dev_front_domain}}",
     "dev_tiles_domain": "a-dev-tiles-{{cookiecutter.lname}}.{{cookiecutter.tld_domain}}",
@@ -22,6 +28,15 @@
     "prod_front_domain": "terralego-{{cookiecutter.lname}}.{{cookiecutter.tld_domain}}",
     "prod_back_domain": "{{cookiecutter.prod_front_domain}}",
     "prod_tiles_domain": "a-tiles-{{cookiecutter.lname}}.{{cookiecutter.tld_domain}}",
+
+    "dev_back_url": "{{cookiecutter.dev_scheme}}://{{cookiecutter.dev_front_domain}}",
+    "dev_tiles_url": "{{cookiecutter.dev_scheme}}://{{cookiecutter.dev_tiles_domain}}",
+    "staging_back_url": "{{cookiecutter.staging_scheme}}://{{cookiecutter.staging_front_domain}}",
+    "staging_tiles_url": "{{cookiecutter.staging_scheme}}://{{cookiecutter.staging_tiles_domain}}",
+    "prod_back_url": "{{cookiecutter.prod_scheme}}://{{cookiecutter.prod_front_domain}}",
+    "prod_tiles_url": "{{cookiecutter.prod_scheme}}://{{cookiecutter.prod_tiles_domain}}",
+    "qa_back_url": "{{cookiecutter.qa_scheme}}://{{cookiecutter.qa_front_domain}}",
+    "qa_tiles_url": "{{cookiecutter.qa_scheme}}://{{cookiecutter.qa_tiles_domain}}",
 
     "staging_host": "{{cookiecutter.staging_front_domain.replace('-{0}.'.format(cookiecutter.lname), '-docker-{0}.'.format(cookiecutter.lname))}}",
     "qa_host": "{{cookiecutter.qa_front_domain.replace('-{0}.'.format(cookiecutter.lname), '-docker-{0}.'.format(cookiecutter.lname))}}",

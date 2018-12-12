@@ -196,15 +196,7 @@ The high level infrastructure:
             |
             +--- nginx: main reverse proxy
             |
-            +--- django: app
-            |            (share a special 'static' & medias volume
-            |             nginx which serve the application statis & medias)
-            |
-            +--- pgsql
-            |
-            +--- redis
-            |
-            +--- backup
+            +--- node/SSR (optional)
             +--- ...
     ```
 
