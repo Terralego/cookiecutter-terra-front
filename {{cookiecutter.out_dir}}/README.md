@@ -13,7 +13,7 @@ git submodule upate
 ## Install NVM
 
 follow official procedures for
-[nvm](https://github.com/creationix/nvm#install-script) 
+[nvm](https://github.com/creationix/nvm#install-script)
 
 
 # Use your development environment
