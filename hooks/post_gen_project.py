@@ -39,8 +39,10 @@ git remote add origin {{cookiecutter.git_project_url}}
 git add .
 rm -rf "{{cookiecutter.deploy_project_dir}}"
 git add -f local/regen.sh
-git submodule add -f "{{cookiecutter.deploy_project_url}}" \
-             "{{cookiecutter.deploy_project_dir}}"
+if [ ! -e "{{cookiecutter.deploy_project_dir}}/.git" ];then
+    git submodule add -f "{{cookiecutter.deploy_project_url}}" \
+        "{{cookiecutter.deploy_project_dir}}"
+fi
 """
 MOTD = '''
 After reviewing all changes
