@@ -364,3 +364,17 @@ cleanup_all_project_cache:
   before_script: []
   script:
   - rm -rf /cache/$CI_PROJECT_PATH_SLUG
+
+# Allow to immediatly trigger a deploy without waiting for the full pipeline to complete
+# eg: redeploying after only issuing a deploy code or configuration change.
+manual_deploy_dev:
+  <<: [ *manual_job_tpl, *deploy_dev ]
+
+manual_deploy_qa:
+  <<: [ *manual_job_tpl, *deploy_qa ]
+
+manual_deploy_staging:
+  <<: [ *manual_job_tpl, *deploy_staging ]
+
+manual_deploy_prod:
+  <<: [ *manual_job_tpl, *deploy_prod ]
