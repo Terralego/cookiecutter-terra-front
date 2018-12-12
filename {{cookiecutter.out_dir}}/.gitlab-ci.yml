@@ -4,6 +4,7 @@ stages:
   - build
   - tests
   - flag_success
+  - launch_manual_release
   - release
   - teardown
   - deploy
@@ -273,18 +274,27 @@ deploy_dev: &deploy_dev
   only: [branches, triggers, web, api, schedules]
   except: [master, tags]
 
+# separate manual launch job to allow concurrent pushing of images
+# when project has multiple images to release
+launch_release_any_commit_as_dev_image:
+  <<: [ *manual_jobs_on_branches_tpl ]
+  when: manual
+  services: []
+  image: "docker:dind"
+  allow_failure: false
+  stage: launch_manual_release
+  script: "echo launch release"
+  before_script: []
+  after_script: []
+
 manual_release_any_commit_as_dev_image:
   <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
-  when: manual
-  allow_failure: false
   variables:
     <<: [ *release_vars ]
     RELEASED_DOCKER_IMAGE: "$DEV_DOCKER_IMAGE"
 
 manual_release_any_commit_as_nginx_dev_image:
   <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
-  when: manual
-  allow_failure: false
   variables:
     <<: [ *release_vars ]
     RELEASED_DOCKER_IMAGE: "$DEV_NGINX_DOCKER_IMAGE"
@@ -294,12 +304,11 @@ deploy_dev_after_manual_release:
   script:
   - |-
     .ansible/scripts/call_ansible.sh -vv -l $A_ENV_NAME \
-    "${DEPLOY_PLAYBOOK}" -e "{ \
-    cops_terralego_nginx_docker_tag: nginx-dev, \
-    cops_terralego_docker_tag: dev}"
+    "${DEPLOY_PLAYBOOK}" -e "{cops_terralego_docker_tag: dev}"
 
 deploy_qa:
   <<: [ *deploy_tpl ]
+  only: [tags, master]
   variables:
     <<: [ *deploy_vars_tpl ]
     A_ENV_NAME: prod
@@ -309,6 +318,7 @@ deploy_qa:
 
 deploy_staging:
   <<: [ *deploy_tpl ]
+  only: [tags, master]
   variables:
     <<: [ *deploy_vars_tpl ]
     A_ENV_NAME: prod
