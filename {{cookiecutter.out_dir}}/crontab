@@ -1,1 +1,0 @@
-#0 7 * * * {{cookiecutter.app_type}} /code/bin/command &> /logs/cron_action_every_day.log

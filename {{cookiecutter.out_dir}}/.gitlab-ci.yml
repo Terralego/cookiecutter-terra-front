@@ -8,6 +8,10 @@ stages:
   - release
   - teardown
   - deploy
+  - manual_dev_build
+  - manual_dev_release
+  - manual_dev_teardown
+  - manual_dev_deploy
 
 services: ["docker:dind"]
 
@@ -122,7 +126,7 @@ before_script:
      break;
     fi;done;fi"
 
-build_images:
+build_images: &build_images
   variables:
     PRELOAD_IMAGES: "$LATEST_DOCKER_IMAGE $TAGGUED_DOCKER_IMAGE"
   tags: ["{{cookiecutter.runner_tag}}"]
@@ -267,66 +271,64 @@ deploy_dev: &deploy_dev
     name: dev
     url: https://{{cookiecutter.dev_front_domain}}
 
-# manual rebuild on any branch except master or tags , no filter
-# and the according deploy job
-# implicitly the deploy job on the branch will auto-deploy the manually built image
-.manual_jobs_on_branches_tpl: &manual_jobs_on_branches_tpl
-  only: [branches, triggers, web, api, schedules]
-  except: [master, tags]
-
-# separate manual launch job to allow concurrent pushing of images
-# when project has multiple images to release
-launch_release_any_commit_as_dev_image:
-  <<: [ *manual_jobs_on_branches_tpl ]
-  when: manual
-  services: []
-  image: "docker:dind"
-  allow_failure: false
-  stage: launch_manual_release
-  script: "echo launch release"
-  before_script: []
-  after_script: []
-
-manual_release_any_commit_as_dev_image:
-  <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
-  variables:
-    <<: [ *release_vars ]
-    RELEASED_DOCKER_IMAGE: "$DEV_DOCKER_IMAGE"
-
-manual_release_any_commit_as_nginx_dev_image:
-  <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
-  variables:
-    <<: [ *release_vars ]
-    RELEASED_DOCKER_IMAGE: "$DEV_NGINX_DOCKER_IMAGE"
-
-deploy_dev_after_manual_release:
-  <<: [ *manual_jobs_on_branches_tpl,  *deploy_dev ]
-  script:
-  - |-
-    .ansible/scripts/call_ansible.sh -vv -l $A_ENV_NAME \
-    "${DEPLOY_PLAYBOOK}" -e "{cops_terralego_docker_tag: dev}"
-
-deploy_qa:
+## disable for now as it blocks main pipeline
+## manual rebuild on any branch except master or tags , no filter
+## # and the according deploy job
+## # implicitly the deploy job on the branch will auto-deploy the manually built image
+## .manual_jobs_on_branches_tpl: &manual_jobs_on_branches_tpl
+##   only: [branches, triggers, web, api, schedules]
+##   except: [master, tags]
+##
+## # separate manual launch job to allow concurrent pushing of images
+## # when project has multiple images to release
+## manual_build_image_from_any_commit_as_dev_image:
+##   <<: [ *build_images, *manual_jobs_on_branches_tpl ]
+##   stage: manual_dev_build
+##   when: manual
+##
+## manual_release_any_commit_as_dev_image:
+##   <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
+##   stage: manual_dev_release
+##   variables:
+##     <<: [ *release_vars ]
+##     RELEASED_DOCKER_IMAGE: "$DEV_DOCKER_IMAGE"
+##
+## manual_release_any_commit_as_nginx_dev_image:
+##   <<: [ *manual_jobs_on_branches_tpl,  *release_taggued_image ]
+##   stage: manual_dev_release
+##   variables:
+##     <<: [ *release_vars ]
+##     RELEASED_DOCKER_IMAGE: "$DEV_NGINX_DOCKER_IMAGE"
+##
+## deploy_dev_after_manual_release:
+##   <<: [ *manual_jobs_on_branches_tpl,  *deploy_dev ]
+##   stage: manual_dev_deploy
+##   script:
+##   - |-
+##     .ansible/scripts/call_ansible.sh -vv -l $A_ENV_NAME \
+##     "${DEPLOY_PLAYBOOK}" -e "{cops_terralego_docker_tag: dev}"
+##
+deploy_qa: &deploy_qa
   <<: [ *deploy_tpl ]
   only: [tags, master]
   variables:
     <<: [ *deploy_vars_tpl ]
-    A_ENV_NAME: prod
+    A_ENV_NAME: qa
   environment:
     name: qa
     url: https://{{cookiecutter.qa_front_domain}}
 
-deploy_staging:
+deploy_staging: &deploy_staging
   <<: [ *deploy_tpl ]
   only: [tags, master]
   variables:
     <<: [ *deploy_vars_tpl ]
-    A_ENV_NAME: prod
+    A_ENV_NAME: staging
   environment:
     name: staging
     url: https://{{cookiecutter.staging_front_domain}}
 
-deploy_prod:
+deploy_prod: &deploy_prod
   <<: [ *deploy_tpl ]
   only: [tags, master]
   variables:
