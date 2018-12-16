@@ -8,10 +8,10 @@ stages:
   - release
   - teardown
   - deploy
-  - manual_dev_build
-  - manual_dev_release
-  - manual_dev_teardown
-  - manual_dev_deploy
+#  - manual_dev_build
+#  - manual_dev_release
+#  - manual_dev_teardown
+#  - manual_dev_deploy
 
 services: ["docker:dind"]
 
