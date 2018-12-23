@@ -4,7 +4,6 @@ stages:
   - build
   - tests
   - flag_success
-  - launch_manual_release
   - release
   - teardown
   - deploy
@@ -60,7 +59,7 @@ variables:
 
 # NEVER ever use gitlab-ci cache, its broken by design in most case of CI related tasks
 # when it comes to parrallel builds reusing local artefacts during jobs thorough the
-# pipeline. Indeed, as gitlab-ci saves front cache to zipfiles, what would occcur
+# pipeline. Indeed, as gitlab-ci saves cache to zipfiles, what would occcur
 # is that the result of a first be would be overwritte/corrupted by the result
 # of a parrallel, quickier, second build !!!
 # That's why, you 'd better have to use a shared volume in your runner configuration,
@@ -269,7 +268,7 @@ deploy_dev: &deploy_dev
 
 # As gitlab-ci does not support pipeline branching, for manual dev release, we need
 # to make a last and one-for-all deploy step for non-blocking pipelines when we do a merge request
-manual_dev_release_and_deploy:
+manual_dev_release_and_deploy: &manual_dev_release_and_deploy
   <<: [ *manual_jobs_on_branches_tpl, *deploy_dev, *release_tpl ]
   stage: manual_jobs
   when: manual
@@ -289,9 +288,15 @@ manual_dev_release_and_deploy:
   - *teardown_step3
   - *deploy_setup
   - *deploy_key_setup
-  - |-
+  - &deploy_manual_dev_cmd |-
     .ansible/scripts/call_ansible.sh -vv -l $A_ENV_NAME \
-    "${DEPLOY_PLAYBOOK}" -e "{cops_{{cookiecutter.app_type}}_docker_tag: dev}"
+    "${DEPLOY_PLAYBOOK}" -e "{cops_terralego_docker_tag: dev}"
+manual_dev_deploy_without_release:
+  <<: [ *manual_dev_release_and_deploy ]
+  script:
+  - *deploy_setup
+  - *deploy_key_setup
+  - *deploy_manual_dev_cmd
 
 deploy_qa: &deploy_qa
   <<: [ *deploy_tpl ]
