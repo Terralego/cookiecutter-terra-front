@@ -31,7 +31,7 @@ variables:
   NGINX_DOCKER_IMAGE: "{{cookiecutter.simple_nginx_docker_image}}"
   # Image with unique identifier
   CURRENT_DOCKER_IMAGE: "${DOCKER_REGISTRY}/${DOCKER_IMAGE}:build-${CI_PIPELINE_IID}"
-  CURRENT_DOCKER_NGINX_IMAGE: "${DOCKER_REGISTRY}/${NGINX_DOCKER_IMAGE}:nginx-build-${CI_PIPELINE_IID}"
+  CURRENT_NGINX_DOCKER_IMAGE: "${DOCKER_REGISTRY}/${NGINX_DOCKER_IMAGE}:nginx-build-${CI_PIPELINE_IID}"
   # Released image (Targeting master)
   LATEST_DOCKER_IMAGE: "${DOCKER_REGISTRY}/${DOCKER_IMAGE}:latest"
   LATEST_NGINX_DOCKER_IMAGE: "${DOCKER_REGISTRY}/${NGINX_DOCKER_IMAGE}:nginx-latest"
@@ -50,7 +50,7 @@ variables:
   # To speed up all builds we may cache in Controls which branch is used to generate image cache tarball
   CACHE_BUILD_FOR_BRANCH_REGEX: "^(master)$"
   MASTER_BRANCH: master
-  CACHE_DAYS: "15"
+  CACHE_DAYS: "7"
   # Path to CI success flag marker
   SUCCESS_FLAG: "/cache/$CI_PROJECT_PATH_SLUG/ci_success_${CI_PIPELINE_IID}"
   # terralego settings
@@ -121,6 +121,36 @@ before_script: &top_before_script
      break;
     fi;done;fi"
 
+.manual_job_tpl: &manual_job_tpl
+  tags: ["{{cookiecutter.runner_tag}}"]
+  allow_failure: true
+  stage: manual_jobs
+  when: manual
+  only: [master, tags]
+  except: []
+
+cleanup_all_expired_build_artefacts_from_cache:
+  <<: [ *manual_job_tpl ]
+  script:
+  - &cleanup_all_expired_build_artefacts_from_cache |-
+    bash -c 'while read f;do rm -fv "$f";done \
+    < <( find /cache/$CI_PROJECT_PATH_SLUG/docker-images/build-* \
+         -type f -mtime +$CACHE_DAYS )'
+
+cleanup_all_expired_docker_images_from_cache:
+  <<: [ *manual_job_tpl ]
+  before_script: []
+  script:
+  - &cleanup_all_expired_docker_images |-
+    bash -c 'while read f;do rm -fv "$f";done \
+    < <( find /cache/$CI_PROJECT_PATH_SLUG/docker-images -type f )'
+
+cleanup_all_project_cache:
+  <<: [ *manual_job_tpl ]
+  before_script: []
+  script:
+  - &cleanup_all_project_cache rm -rf /cache/$CI_PROJECT_PATH_SLUG
+
 build_images: &build_images
   variables: &build_images_vars
     PRELOAD_IMAGES: "$LATEST_DOCKER_IMAGE $TAGGUED_DOCKER_IMAGE"
@@ -136,8 +166,12 @@ build_images: &build_images
     if [ -e /docker_images_errors ];then cat /docker_images_errors;exit 1;fi
   - &build_step2 sh -c "set -ex
     && docker inspect \"\${CURRENT_DOCKER_IMAGE}\" >/dev/null
-    && docker inspect \"\${CURRENT_DOCKER_NGINX_IMAGE}\" >/dev/null
-    && docker save \"\${CURRENT_DOCKER_IMAGE}\" \"\${CURRENT_DOCKER_NGINX_IMAGE}\"
+    && docker inspect \"\${ CURRENT_NGINX_DOCKER_IMAGE}\" >/dev/null
+    && docker save
+       \$(docker history -q \"\${CURRENT_DOCKER_IMAGE}\" | tr '\n' ' ' | tr -d '<missing>')
+       \"\${CURRENT_DOCKER_IMAGE}\"
+       \$(docker history -q \"\${CURRENT_NGINX_DOCKER_IMAGE}\" | tr '\n' ' ' | tr -d '<missing>')
+       \"\${CURRENT_NGINX_DOCKER_IMAGE}\"
        | gzip > \"\${IMAGES_TARBALL}-pending\"
     && mv -fv \"\${IMAGES_TARBALL}-pending\" \"${IMAGES_TARBALL}\""
 
@@ -157,7 +191,7 @@ tests:
   - *launch_test_stack
   - sh -c "\$D_COMPOSE run --rm  -T -u node node npm run test"
 
-lint:
+linting:
   <<: [ *tests_tpl ]
   script:
   - *launch_test_stack
@@ -173,31 +207,21 @@ lint:
   - &release_step2 sh -c "docker tag \"\$(eval echo \$TO_RELEASE_DOCKER_IMAGE)\"
     \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
   - &release_step3 sh -c "docker push \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
+  - &release_step4 sh -c "docker tag \"\$(eval echo \$TO_RELEASE_NGINX_DOCKER_IMAGE)\"
+    \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\""
+  - &release_step5 sh -c "docker push \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\""
   variables: &release_vars
     PRELOAD_IMAGES: ""
     TO_RELEASE_DOCKER_IMAGE: "$CURRENT_DOCKER_IMAGE"
+    TO_RELEASE_NGINX_DOCKER_IMAGE: "$CURRENT_NGINX_DOCKER_IMAGE"
 
-release_taggued_nginx_image: &release_taggued_nginx_image
-  <<: [ *release_tpl ]
-  only: [tags]
-  variables:
-    <<: [ *release_vars ]
-    RELEASED_DOCKER_IMAGE: "$TAGGUED_NGINX_DOCKER_IMAGE"
-
-release_taggued_image: &release_taggued_image
+release_taggued_imagep: &release_taggued_image
   <<: [ *release_tpl ]
   only: [tags]
   variables:
     <<: [ *release_vars ]
     RELEASED_DOCKER_IMAGE: "$TAGGUED_DOCKER_IMAGE"
-
-release_latest_nginx_image: &release_latest_nginx_image
-  <<: [ *release_tpl ]
-  # all branchs given here will be associated to update the latest tag
-  only: [master]
-  variables:
-    <<: [ *release_vars ]
-    RELEASED_DOCKER_IMAGE: "$LATEST_NGINX_DOCKER_IMAGE"
+    RELEASED_NGINX_DOCKER_IMAGE: "$TAGGUED_NGINX_DOCKER_IMAGE"
 
 release_latest_image: &release_latest_image
   <<: [ *release_tpl ]
@@ -206,6 +230,7 @@ release_latest_image: &release_latest_image
   variables:
     <<: [ *release_vars ]
     RELEASED_DOCKER_IMAGE: "$LATEST_DOCKER_IMAGE"
+    RELEASED_NGINX_DOCKER_IMAGE: "$LATEST_NGINX_DOCKER_IMAGE"
 
 # the job will only create a file upon full tests pipeline success
 flag_success_only_on_success:
@@ -215,7 +240,7 @@ flag_success_only_on_success:
   script:
   - touch "${SUCCESS_FLAG}"
 
-teardown_env:
+teardown_env: &teardown_env
   tags: ["{{cookiecutter.runner_tag}}"]
   variables:
     PRELOAD_TARBALLS: ""
@@ -233,6 +258,7 @@ teardown_env:
     fi
   # cleanup pipeline image & pending artefacts
   - &teardown_step3 rm -fv ${IMAGES_TARBALL}* "${SUCCESS_FLAG}"
+  - *cleanup_all_expired_build_artefacts_from_cache
 
 .deploy_tpl: &deploy_tpl
   tags: ["{{cookiecutter.runner_tag}}"]
@@ -245,6 +271,7 @@ teardown_env:
     NO_SILENT: ""
   before_script:
   # make this in only one block to be easily reusable in deploy jobs
+  - *pullsubmodules
   - &deploy_setup set -e;vv(){ echo "$@">&2;"$@"; };
     if [ "x${A_ENV_NAME}" = x ];then
     echo "\$A_ENV_NAME is not set, bailing out" >&2 ;exit 1;fi;
@@ -266,6 +293,13 @@ deploy_dev: &deploy_dev
     name: dev
     url: https://{{cookiecutter.dev_front_domain}}
 
+# manual rebuild on any branch except master or tags , no filter
+# and the according deploy job
+# implicitly the deploy job on the branch will auto-deploy the manually built image
+.manual_jobs_on_branches_tpl: &manual_jobs_on_branches_tpl
+  only: [branches, triggers, web, api, schedules]
+  except: [master, tags]
+
 # As gitlab-ci does not support pipeline branching, for manual dev release, we need
 # to make a last and one-for-all deploy step for non-blocking pipelines when we do a merge request
 manual_dev_release_and_deploy: &manual_dev_release_and_deploy
@@ -280,9 +314,10 @@ manual_dev_release_and_deploy: &manual_dev_release_and_deploy
   script:
   - *build_step1
   - *release_step1
-  - sh -c "docker tag \"\$(eval echo \$CURRENT_DOCKER_IMAGE)\"       \"\$(eval echo \$DEV_DOCKER_IMAGE)\""
-  - sh -c "docker tag \"\$(eval echo \$CURRENT_DOCKER_NGINX_IMAGE)\" \"\$(eval echo \$DEV_NGINX_DOCKER_IMAGE)\""
-  - sh -c "docker push \"\$(eval echo \ \$DEV_DOCKER_IMAGE)\" \"\$(eval echo \$DEV_NGINX_DOCKER_IMAGE)\""
+  - *release_step2
+  - *release_step3
+  - *release_step4
+  - *release_step5
   - *teardown_step1
   - *teardown_step2
   - *teardown_step3
@@ -327,35 +362,6 @@ deploy_prod: &deploy_prod
   environment:
     name: prod
     url: https://{{cookiecutter.prod_front_domain}}
-
-.manual_job_tpl: &manual_job_tpl
-  tags: ["{{cookiecutter.runner_tag}}"]
-  allow_failure: true
-  stage: manual_jobs
-  when: manual
-  only: [master, tags]
-  except: []
-
-cleanup_all_expired_build_artefacts_from_cache:
-  <<: [ *manual_job_tpl ]
-  script:
-  - bash -c 'while read f;do rm -fv "$f";done
-    < <( find /cache/$CI_PROJECT_PATH_SLUG/docker-images/build-*
-         -type f -mtime +\$CACHE_DAYS )'
-
-cleanup_all_expired_docker_images_from_cache:
-  <<: [ *manual_job_tpl ]
-  before_script: []
-  script:
-  - bash -c 'while read f;do rm -fv "$f";done
-    < <( find /cache/$CI_PROJECT_PATH_SLUG/docker-images
-         -type f -mtime +\$CACHE_DAYS )'
-
-cleanup_all_project_cache:
-  <<: [ *manual_job_tpl ]
-  before_script: []
-  script:
-  - rm -rf /cache/$CI_PROJECT_PATH_SLUG
 
 # Allow to immediatly trigger a deploy without waiting for the full pipeline to complete
 # eg: redeploying after only issuing a deploy code or configuration change.
