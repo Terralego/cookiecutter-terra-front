@@ -21,6 +21,7 @@ if  [[ -n $SHELL_DEBUG ]];then set -x;fi
 
 shopt -s extglob
 
+VENV=venv
 APP={{cookiecutter.app_type}}
 APP_USER=${APP_USER:-${APP}}
 APP_CONTAINER=${APP_CONTAINER:-${APP}}
@@ -64,7 +65,7 @@ _shell() {
     local NVMRC=${NVMRC:-.nvmrc}
     local NVM_PATH=${NVM_PATH:-..}
     local NVM_PATHS=${NVMS_PATH:-${NVM_PATH}}
-    local VENV_NAME=${VENV_NAME:-venv}
+    local VENV_NAME=${VENV_NAME:-$VENV}
     local VENV_PATHS=${VENV_PATHS:-./$VENV_NAME ../$VENV_NAME}
     local DOCKER_SHELL=${DOCKER_SHELL-}
     local run_mode_args=""
@@ -214,7 +215,7 @@ stop_containers() {
 #  fg: launch app container in foreground (using entrypoint)
 do_fg() {
     stop_containers
-    vv $DC run --rm --no-deps --use-aliases --service-ports $APP_CONTAINER $@
+    vv $DC run --rm --no-deps --use-aliases --service-ports $APP_CONTAINER ${@}
 }
 
 #  build [$args]: rebuild app containers ($BUILD_CONTAINERS)
@@ -283,24 +284,6 @@ do_yamldump() {
     $@ $bargs
 }
 
-# {{cookiecutter.app_type.upper()}} specific
-#  python: enter python interpreter
-do_python() {
-    do_usershell ../venv/bin/python $@
-}
-
-#  manage [$args]: run manage.py commands
-do_manage() {
-    do_python manage.py $@
-}
-
-#  runserver [$args]: alias for fg
-do_runserver() {
-    do_fg "$@"
-}
-
-do_run_server() { do_runserver $@; }
-
 #  tests [$tests]: run tests
 do_test() {
     local bargs=${@:-tests}
@@ -324,7 +307,7 @@ do_main() {
     local actions="up_corpusops|shell|usage|install_docker|setup_corpusops"
     actions="$actions|yamldump|stop|usershell|exec|userexec|dexec|duserexec|dcompose"
     actions="$actions|init|up|fg|pull|build|buildimages|down"
-    actions_{{cookiecutter.app_type}}="runserver|tests|test|coverage|linting|manage|python"
+    actions_{{cookiecutter.app_type}}="tests|test|coverage|linting"
     actions="@($actions|$actions_{{cookiecutter.app_type}})"
     action=${1-}
     if [[ -n $@ ]];then shift;fi
