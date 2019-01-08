@@ -1,6 +1,8 @@
 {
     "name": "myapp",
+    "nginx_version": "1.15-alpine",
     "node_version": "10.9.0",
+    "node_nvmrc_version": "v{{cookiecutter.node_version}}",
     "lname": "{{cookiecutter.name|lower}}",
     "out_dir": ".",
     "tld_domain": "example.com",

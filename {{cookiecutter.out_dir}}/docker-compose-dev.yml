@@ -1,0 +1,18 @@
+version: "3.7"
+x-images:
+  dev: &dev
+    volumes:
+    - ./src:/code/src/
+    - ./public:/code/public/
+    - ./build:/code/build/
+    - ./package.json:/code/package.json
+    - ./package-lock.json:/code/package-lock.json
+    - ./node_modules:/code/node_modules
+    - ./local/terra-front-deploy/prod/etc/supervisor.d/npm:/etc/supervisor.d/npm
+    - ./local/terra-front-deploy/prod/init.sh:/code/init/init.sh
+    - ./local/terra-front-deploy/prod/sudoer:/etc/sudoers.d/node
+services:
+  nginx:
+    <<: [ *dev ]
+  {{cookiecutter.app_type}}:
+    <<: [ *dev ]

@@ -1,15 +1,17 @@
 version: '3.7'
-x-images:
-  {{cookiecutter.app_type}}: &{{cookiecutter.app_type}}
-    build: {context: "."}
 services:
+  {{cookiecutter.app_type}}:
+    build:
+      dockerfile: Dockerfile
+      context: "."
+      args:
+        NODE_BASE_NODE_IMAGE:    "$NODE_BASE_NODE_IMAGE"
+        NODE_BASE_NODE_VERSION:  "$NODE_BASE_NODE_VERSION"
   nginx:
     build:
       context: "."
       dockerfile: Dockerfile.nginx
       args:
+        NODE_BASE_NGINX_IMAGE:   "$NODE_BASE_NGINX_IMAGE"
+        NODE_BASE_NGINX_VERSION: "$NODE_BASE_NGINX_VERSION"
         STATICS_FROM: "${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE_VERSION}"
-        STATICS_DIR: /code/build/
-        STATICS_DEST: /usr/share/nginx/html/
-  cron: {<<: [ *{{cookiecutter.app_type}} ]}
-  {{cookiecutter.app_type}}: {<<: [ *{{cookiecutter.app_type}} ]}
