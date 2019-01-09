@@ -31,13 +31,13 @@
     "prod_back_domain": "{{cookiecutter.prod_front_domain}}",
     "prod_tiles_domain": "a-tiles-{{cookiecutter.lname}}.{{cookiecutter.tld_domain}}",
 
-    "dev_back_url": "{{cookiecutter.dev_scheme}}://{{cookiecutter.dev_front_domain}}",
+    "dev_back_url": "{{cookiecutter.dev_scheme}}://{{cookiecutter.dev_front_domain}}/api",
     "dev_tiles_url": "{{cookiecutter.dev_scheme}}://{{cookiecutter.dev_tiles_domain}}",
-    "staging_back_url": "{{cookiecutter.staging_scheme}}://{{cookiecutter.staging_front_domain}}",
+    "staging_back_url": "{{cookiecutter.staging_scheme}}://{{cookiecutter.staging_front_domain}}/api",
     "staging_tiles_url": "{{cookiecutter.staging_scheme}}://{{cookiecutter.staging_tiles_domain}}",
-    "prod_back_url": "{{cookiecutter.prod_scheme}}://{{cookiecutter.prod_front_domain}}",
+    "prod_back_url": "{{cookiecutter.prod_scheme}}://{{cookiecutter.prod_front_domain}}/api",
     "prod_tiles_url": "{{cookiecutter.prod_scheme}}://{{cookiecutter.prod_tiles_domain}}",
-    "qa_back_url": "{{cookiecutter.qa_scheme}}://{{cookiecutter.qa_front_domain}}",
+    "qa_back_url": "{{cookiecutter.qa_scheme}}://{{cookiecutter.qa_front_domain}}/api",
     "qa_tiles_url": "{{cookiecutter.qa_scheme}}://{{cookiecutter.qa_tiles_domain}}",
 
     "staging_host": "{{cookiecutter.staging_front_domain.replace('-{0}.'.format(cookiecutter.lname), '-docker-{0}.'.format(cookiecutter.lname))}}",
