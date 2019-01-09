@@ -5,8 +5,7 @@ x-images:
     - ./src:/code/src/
     - ./public:/code/public/
     - ./build:/code/build/
-    - ./package.json:/code/package.json
-    - ./package-lock.json:/code/package-lock.json
+    - ./:/hostdir
     - ./node_modules:/code/node_modules
     - ./local/terra-front-deploy/prod/etc/supervisor.d/npm:/etc/supervisor.d/npm
     - ./local/terra-front-deploy/prod/init.sh:/code/init/init.sh
@@ -14,5 +13,8 @@ x-images:
 services:
   nginx:
     <<: [ *dev ]
+    ports:
+    - "${NGINX_PORT:-9080}:80"
+    - "${NGINX_SSL_PORT:-8443}:443"
   {{cookiecutter.app_type}}:
     <<: [ *dev ]

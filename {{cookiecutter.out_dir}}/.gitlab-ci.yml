@@ -188,13 +188,13 @@ tests:
   coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
   script:
   - *launch_test_stack
-  - sh -c "\$D_COMPOSE run --rm  -T -u node node npm run test"
+  - sh -c "\$D_COMPOSE run --rm -e CI=true node npm run test"
 
 linting:
   <<: [ *tests_tpl ]
   script:
   - *launch_test_stack
-  - sh -c "\$D_COMPOSE run --rm  -T -u node node npm run lint"
+  - sh -c "\$D_COMPOSE run --rm -e CI=true node npm run lint"
 
 .release_tpl: &release_tpl
   stage: release
@@ -207,9 +207,9 @@ linting:
     \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\"
     && docker tag \"\$(eval echo \$TO_RELEASE_DOCKER_IMAGE)\"
     \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
-  - &release_step3 sh -c "docker push
-    \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\"
-    \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
+  - &release_step3 sh -c "
+    docker push \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\" &&
+    docker push \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
   variables: &release_vars
     PRELOAD_IMAGES: ""
     TO_RELEASE_DOCKER_IMAGE: "$CURRENT_DOCKER_IMAGE"
@@ -310,6 +310,7 @@ manual_dev_release_and_deploy: &manual_dev_release_and_deploy
   variables:
     <<: [ *build_images_vars, *release_vars, *deploy_dev_vars ]
     RELEASED_DOCKER_IMAGE: "$DEV_DOCKER_IMAGE"
+    RELEASED_NGINX_DOCKER_IMAGE: "$DEV_NGINX_DOCKER_IMAGE"
   before_script: *top_before_script
   script:
   - *build_step1

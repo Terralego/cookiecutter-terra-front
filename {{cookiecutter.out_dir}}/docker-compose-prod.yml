@@ -1,12 +1,12 @@
-version: "3"
+version: "3.7"
 x-images:
   bypass: &bypass
     command: 'sh -c "while true;do echo notstarted;sleep 65000;done"'
     entrypoint: 'sh -c "while true;do echo notstarted;sleep 65000;done"'
     restart: "no"
 services:
-  {{cookiecutter.app_type}}: {<<: [ *bypass ]}
+  {{cookiecutter.app_type}}: {environment:{NO_START: "1"}}
   nginx:
     ports:
-    - "${NGINX_PORT:-8080}:80"
+    - "${NGINX_PORT:-9080}:80"
     - "${NGINX_SSL_PORT:-8443}:443"
