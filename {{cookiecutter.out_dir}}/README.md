@@ -115,5 +115,5 @@ docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
 run shell nginx
 ```
 docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 -e SHELL_USER=root nginx bas
+    run --rm -e NPM_INSTALL=1 -e SHELL_USER=root nginx bash
 ```
