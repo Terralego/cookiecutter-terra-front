@@ -82,38 +82,31 @@ npm i mc-tf-test
 
 build dockers
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml -f docker-compose-build.yml build node
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml -f docker-compose-build.yml build nginx
+./control.sh build
 ```
 
 build js app
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 node npm run-script build
+./control.sh usershell npm run-script build
 ```
 
 run node/devserver
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 node
+./control.sh fg
 ```
 
 run nginx
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml -f \
-    run --rm nginx
+./control.sh up --force-recreate nginx
 ```
 
 run shell in node/devserver
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 node bash
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 -e SHELL_USER=root node bash
+./control.sh usershell npm run-script build
+./control.sh shell npm run-script build  # as root
 ```
 
 run shell nginx
 ```
-docker-compose -f docker-compose.yml -f docker-compose-dev.yml \
-    run --rm -e NPM_INSTALL=1 -e SHELL_USER=root nginx bash
+APP_CONTAINER=nginx ./control.sh shell
 ```
