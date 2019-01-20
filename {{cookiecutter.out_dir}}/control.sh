@@ -21,14 +21,14 @@ if  [[ -n $SHELL_DEBUG ]];then set -x;fi
 
 shopt -s extglob
 
-VENV=venv
+VENV=../venv
 APP={{cookiecutter.app_type}}
 APP_USER=${APP_USER:-${APP}}
 APP_CONTAINER=${APP_CONTAINER:-${APP}}
 DEBUG=${DEBUG-}
 NO_BACKGROUND=${NO_BACKGROUND-}
 BUILD_PARALLEL=${BUILD_PARALLEL:-1}
-BUILD_CONTAINERS="$APP_CONTAINER cron"
+BUILD_CONTAINERS="$APP_CONTAINER nginx"
 EDITOR=${EDITOR:-vim}
 DIST_FILES_FOLDERS=". src/*/settings"
 CONTROL_COMPOSE_FILES="${CONTROL_COMPOSE_FILES:-docker-compose.yml docker-compose-dev.yml}"
@@ -40,7 +40,7 @@ set_dc() {
     for i in $COMPOSE_FILES;do
         DC="${DC} -f $i"
     done
-    DCB="$DC -f docker-compose-build.yml"
+    DCB="$DC -f docker-compose-build.yml -f docker-compose-build-dev.yml"
 }
 
 log(){ echo "$@">&2;}
@@ -61,7 +61,7 @@ _shell() {
     local services_ports=${services_ports-}
     local bargs="$@"
     local NO_VIRTUALENV=${NO_VIRTUALENV-}
-    local NO_NVM=${NO_VIRTUALENV-}
+    local NO_NVM=${NO_NVM-1}
     local NVMRC=${NVMRC:-.nvmrc}
     local NVM_PATH=${NVM_PATH:-..}
     local NVM_PATHS=${NVMS_PATH:-${NVM_PATH}}
@@ -70,7 +70,7 @@ _shell() {
     local DOCKER_SHELL=${DOCKER_SHELL-}
     local run_mode_args=""
     local pre="DOCKER_SHELL=\"$DOCKER_SHELL\";touch \$HOME/.control_bash_rc;
-    if [ -e /etc/default/locale ];then . /etc/default/locale;fi
+    if [ -e /etc/default/locale ];then . /etc/default/locale;fi;
     if [ \"x\$DOCKER_SHELL\" = \"x\" ];then
         if ( bash --version >/dev/null 2>&1 );then DOCKER_SHELL=\"bash\"; else DOCKER_SHELL=\"sh\";fi;
     fi"
@@ -110,7 +110,7 @@ _shell() {
         set -- dvv $DC \
             $run_mode $run_mode_args \
             -e TERM=$TERM -e COLUMNS=$COLUMNS -e LINES=$LINES \
-            -u $user $container sh $( if [[ -z "$bargs" ]];then echo "-i";fi ) -c "$bargs"
+            -u $user --entrypoint sh $container $( if [[ -z "$bargs" ]];then echo "-i";fi ) -c "$bargs"
     fi
     "$@"
 }
@@ -188,7 +188,7 @@ do_pull() {
 
 #  up [$args]: start stack
 do_up() {
-    local bars=$@
+    local bargs=$@
     set -- vv $DC up
     if [[ -z $NO_BACKGROUND ]];then bargs="-d $bargs";fi
     $@ $bargs
@@ -216,7 +216,7 @@ stop_containers() {
 #  fg: launch app container in foreground (using entrypoint)
 do_fg() {
     stop_containers
-    vv $DC run --rm --no-deps --use-aliases --service-ports $APP_CONTAINER ${@}
+    vv $DC run --rm --no-deps --use-aliases --service-ports $APP_CONTAINER $@
 }
 
 #  build [$args]: rebuild app containers ($BUILD_CONTAINERS)
@@ -285,30 +285,34 @@ do_yamldump() {
     $@ $bargs
 }
 
+# {{cookiecutter.app_type.upper()}} specific
+#  runserver [$args]: alias for fg
+do_runserver() {
+    do_fg "$@"
+}
+
+do_run_server() { do_runserver $@; }
+
 #  tests [$tests]: run tests
 do_test() {
-    local bargs=${@:-tests}
+    local bargs=${@:-test}
     stop_containers
     set -- vv do_shell \
-        "chown {{cookiecutter.app_type}} ../.tox
-        && gosu {{cookiecutter.app_type}} ../venv/bin/tox -c ../tox.ini -e $bargs"
+        "export CI=true && npm run $bargs"
     "$@"
 }
 
 do_tests() { do_test $@; }
 
 #  linting: run linting tests
-do_linting() { do_test linting; }
-
-#  coverage: run coverage tests
-do_coverage() { do_test coverage; }
+do_linting() { do_test lint; }
 
 do_main() {
     local args=${@:-usage}
     local actions="up_corpusops|shell|usage|install_docker|setup_corpusops"
     actions="$actions|yamldump|stop|usershell|exec|userexec|dexec|duserexec|dcompose"
     actions="$actions|init|up|fg|pull|build|buildimages|down"
-    actions_{{cookiecutter.app_type}}="tests|test|coverage|linting"
+    actions_{{cookiecutter.app_type}}="runserver|tests|test|linting"
     actions="@($actions|$actions_{{cookiecutter.app_type}})"
     action=${1-}
     if [[ -n $@ ]];then shift;fi

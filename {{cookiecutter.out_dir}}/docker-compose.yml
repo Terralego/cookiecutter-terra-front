@@ -5,11 +5,12 @@ x-images:
   {{cookiecutter.app_type}}: &{{cookiecutter.app_type}}
     <<: [ *env ]
     tty: true
-    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE_VERSION}"
+    # latest image is only used in prod (without dev & test tools)
+    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE_VERSION}-dev"
 services:
   nginx:
     <<: [ *env ]
-    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE_VERSION}"
+    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE_VERSION}-dev"
     volumes:
       - ./local/terra-front-deploy/prod/etc/nginx/default.conf.template:/etc/nginx/conf.d/default.conf.template
       - htpasswd:/etc/nginx/htpasswd

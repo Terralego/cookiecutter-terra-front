@@ -53,9 +53,11 @@ variables:
   CACHE_DAYS: "7"
   # Path to CI success flag marker
   SUCCESS_FLAG: "/cache/$CI_PROJECT_PATH_SLUG/ci_success_${CI_PIPELINE_IID}"
+{%-if cookiecutter.use_submodule_for_deploy_code%}
   # terralego settings
   TERRAFRONT_VERSION: origin/master
   TERRAFRONT_DEPLOY_VERSION: origin/stable
+{%endif%}
 
 # NEVER ever use gitlab-ci cache, its broken by design in most case of CI related tasks
 # when it comes to parrallel builds reusing local artefacts during jobs thorough the
@@ -158,17 +160,26 @@ build_images: &build_images
   stage: build
   script:
   - &build_step1 |-
+    set +e
+    set -x
     for i in $DOCKER_BUILT_SERVICES;do
-      ( echo "$D_COMPOSE -f docker-compose-prod.yml -f docker-compose-build.yml build $i" >&2 )
-      (       $D_COMPOSE -f docker-compose-prod.yml -f docker-compose-build.yml build $i \
-        || ( echo "BUILD ERROR: $i" >> /docker_images_errors ) )
-    done;
+        $D_COMPOSE -f docker-compose-prod.yml -f docker-compose-build.yml build $i \
+        || ( echo "BUILD ERROR: $i" >> /docker_images_errors )
+    done
+    for i in $DOCKER_BUILT_SERVICES;do
+        $D_COMPOSE -f docker-compose-build.yml -f docker-compose-build-dev.yml build $i \
+        || ( echo "BUILD ERROR: $i" >> /docker_images_errors )
+    done
     if [ -e /docker_images_errors ];then cat /docker_images_errors;exit 1;fi
   - &build_step2 sh -c "set -ex
     && docker inspect \"\${CURRENT_DOCKER_IMAGE}\" >/dev/null
     && docker save
+       \$(docker history -q \"\${CURRENT_NGINX_DOCKER_IMAGE}-dev\" | tr '\n' ' ' | tr -d '<missing>')
+       \"\${CURRENT_NGINX_DOCKER_IMAGE}-dev\"
        \$(docker history -q \"\${CURRENT_NGINX_DOCKER_IMAGE}\" | tr '\n' ' ' | tr -d '<missing>')
        \"\${CURRENT_NGINX_DOCKER_IMAGE}\"
+       \$(docker history -q \"\${CURRENT_DOCKER_IMAGE}-dev\" | tr '\n' ' ' | tr -d '<missing>')
+       \"\${CURRENT_DOCKER_IMAGE}-dev\"
        \$(docker history -q \"\${CURRENT_DOCKER_IMAGE}\" | tr '\n' ' ' | tr -d '<missing>')
        \"\${CURRENT_DOCKER_IMAGE}\"
        | gzip > \"\${IMAGES_TARBALL}-pending\"
@@ -177,24 +188,30 @@ build_images: &build_images
 .tests_tpl: &tests_tpl
   tags: ["{{cookiecutter.runner_tag}}"]
   stage: tests
-  variables: &test_vars_tpl {PRELOAD_IMAGES: "", CI: "true"}
+  variables: &test_vars_tpl
+    PRELOAD_IMAGES: ""
+    CI: "true"
+    CONTROL_COMPOSE_FILES: docker-compose.yml
   script:
   - &launch_test_stack |-
-    sh -c 'for i in $DOCKER_BUILT_SERVICES;
-     do $D_COMPOSE up -d --force-recreate --no-deps $i;done'
+    sh -c 'for i in $DOCKER_SERVICES;
+     do ./control.sh up --force-recreate --no-deps $i;done'
 
-tests:
-  <<: [ *tests_tpl ]
-  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
-  script:
-  - *launch_test_stack
-  - sh -c "\$D_COMPOSE run --rm -e CI=true node npm run test"
+{% set testsc = (not cookiecutter.test_tests) and '#' or '' -%}
+{{testsc}}tests:
+{{testsc}}  <<: [ *tests_tpl ]
+{{testsc}}  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+{{testsc}}  script:
+{{testsc}}  - *launch_test_stack
+{{testsc}}  - ./control.sh test
+{{testsc}}  - ./control.sh coverage
 
-linting:
-  <<: [ *tests_tpl ]
-  script:
-  - *launch_test_stack
-  - sh -c "\$D_COMPOSE run --rm -e CI=true node npm run lint"
+{% set lintingc = (not cookiecutter.test_linting) and '#' or '' -%}
+{{lintingc}}linting:
+{{lintingc}}  <<: [ *tests_tpl ]
+{{lintingc}}  script:
+{{lintingc}}  - *launch_test_stack
+{{lintingc}}  - ./control.sh linting
 
 .release_tpl: &release_tpl
   stage: release
@@ -203,13 +220,19 @@ linting:
   # redo the docker login, without the /bin/true, failing if the registry is down
   - &release_step1 sh /docker_login
   # quoting & subshelling to work around gitlab variable substitutions
-  - &release_step2 sh -c "docker tag \"\$(eval echo \$TO_RELEASE_NGINX_DOCKER_IMAGE)\"
-    \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\"
+  - &release_step2 sh -c "docker tag \"\$(eval echo \$TO_RELEASE_DOCKER_IMAGE)-dev\"
+    \"\$(eval echo \$RELEASED_DOCKER_IMAGE)-dev\"
     && docker tag \"\$(eval echo \$TO_RELEASE_DOCKER_IMAGE)\"
-    \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
+    \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\"
+    && docker tag \"\$(eval echo \$TO_RELEASE_NGINX_DOCKER_IMAGE)-dev\"
+    \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)-dev\"
+    && docker tag \"\$(eval echo \$TO_RELEASE_NGINX_DOCKER_IMAGE)\"
+    \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\""
   - &release_step3 sh -c "
-    docker push \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\" &&
-    docker push \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\""
+    docker push \"\$(eval echo \$RELEASED_DOCKER_IMAGE)-dev\" &&
+    docker push \"\$(eval echo \$RELEASED_DOCKER_IMAGE)\" &&
+    docker push \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)-dev\" &&
+    docker push \"\$(eval echo \$RELEASED_NGINX_DOCKER_IMAGE)\""
   variables: &release_vars
     PRELOAD_IMAGES: ""
     TO_RELEASE_DOCKER_IMAGE: "$CURRENT_DOCKER_IMAGE"
@@ -270,8 +293,10 @@ teardown_env: &teardown_env
     DEPLOY_PLAYBOOK: ".ansible/playbooks/app.yml"
     NO_SILENT: ""
   before_script:
-  # make this in only one block to be easily reusable in deploy jobs
+{%-if cookiecutter.use_submodule_for_deploy_code%}
   - *pullsubmodules
+{%endif%}
+  # make this in only one block to be easily reusable in deploy jobs
   - &deploy_setup set -e;vv(){ echo "$@">&2;"$@"; };
     if [ "x${A_ENV_NAME}" = x ];then
     echo "\$A_ENV_NAME is not set, bailing out" >&2 ;exit 1;fi;
@@ -332,6 +357,7 @@ manual_dev_deploy_without_release:
   - *deploy_key_setup
   - *deploy_manual_dev_cmd
 
+{% if cookiecutter.qa_host -%}
 deploy_qa: &deploy_qa
   <<: [ *deploy_tpl ]
   only: [tags, master]
@@ -342,6 +368,8 @@ deploy_qa: &deploy_qa
     name: qa
     url: https://{{cookiecutter.qa_front_domain}}
 
+{% endif -%}
+{%- if cookiecutter.staging_host -%}
 deploy_staging: &deploy_staging
   <<: [ *deploy_tpl ]
   only: [tags, master]
@@ -352,6 +380,7 @@ deploy_staging: &deploy_staging
     name: staging
     url: https://{{cookiecutter.staging_front_domain}}
 
+{%endif-%}
 deploy_prod: &deploy_prod
   <<: [ *deploy_tpl ]
   only: [tags, master]
@@ -367,11 +396,15 @@ deploy_prod: &deploy_prod
 manual_deploy_dev:
   <<: [ *manual_job_tpl, *deploy_dev ]
 
+{% if cookiecutter.qa_host -%}
 manual_deploy_qa:
   <<: [ *manual_job_tpl, *deploy_qa ]
 
+{% endif -%}
+{%- if cookiecutter.staging_host -%}
 manual_deploy_staging:
   <<: [ *manual_job_tpl, *deploy_staging ]
 
+{% endif -%}
 manual_deploy_prod:
   <<: [ *manual_job_tpl, *deploy_prod ]

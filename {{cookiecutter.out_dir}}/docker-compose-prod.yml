@@ -5,8 +5,12 @@ x-images:
     entrypoint: 'sh -c "while true;do echo notstarted;sleep 65000;done"'
     restart: "no"
 services:
-  {{cookiecutter.app_type}}: {environment:{NO_START: "1"}}
+  {{cookiecutter.app_type}}:
+    environment:
+      NO_START: "1"
+    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE_VERSION}"
   nginx:
+    image: "${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_NGINX_IMAGE_VERSION}"
     ports:
     - "${NGINX_PORT:-9080}:80"
     - "${NGINX_SSL_PORT:-8443}:443"

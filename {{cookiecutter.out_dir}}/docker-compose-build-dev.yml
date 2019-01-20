@@ -1,0 +1,10 @@
+version: '3.7'
+services:
+  {{cookiecutter.app_type}}:
+    build:
+      args:
+        BUILD_ENV: dev
+  nginx:
+    build:
+      args:
+        STATICS_FROM: "${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE}:${{'{'}}{{cookiecutter.app_type.upper()}}_IMAGE_VERSION}-dev"

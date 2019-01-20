@@ -8,6 +8,7 @@
     "tld_domain": "example.com",
     "app_type": "node",
     "app_suffix": "-front",
+    "use_submodule_for_deploy_code": "y",
 
     "scheme": "https",
     "dev_scheme": "{{cookiecutter.scheme}}",
@@ -56,6 +57,8 @@
     "git_project": "{{cookiecutter.lname}}{{cookiecutter.app_suffix}}",
     "git_project_url": "https://{{cookiecutter.git_project_server}}/{{cookiecutter.git_ns}}/{{cookiecutter.git_project}}",
     "fname_slug": "{{'{0}-{1}{2}'.format(cookiecutter.git_ns, cookiecutter.lname, cookiecutter.app_suffix)|lower|replace('/', '-')|replace('_', '-')}}",
+    "test_tests": "y",
+    "test_linting": "y",
     "runner_tag": "{{cookiecutter.fname_slug}}-ci",
     "deploy_project_url": "https://github.com/makinacorpus/terra{{cookiecutter.app_suffix}}-deploy.git",
     "deploy_project_dir": "local/{{cookiecutter.deploy_project_url.split('/')[-1].replace('.git', '')}}",
