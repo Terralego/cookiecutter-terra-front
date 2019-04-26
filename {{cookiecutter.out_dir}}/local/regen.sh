@@ -17,7 +17,7 @@ u=${COOKIECUTTER-}
 if [[ -z "$u" ]];then
     u="$HOME/.cookiecutters/cookiecutter-terra{{cookiecutter.app_suffix}}"
     if [ ! -e "$u" ];then
-        u="https://github.com/makinacorpus/$(basename $u).git"
+        u="https://github.com/Terralego/$(basename $u).git"
     else
         cd "$u"
         git fetch origin

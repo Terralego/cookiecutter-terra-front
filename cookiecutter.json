@@ -60,7 +60,7 @@
     "test_tests": "y",
     "test_linting": "y",
     "runner_tag": "{{cookiecutter.fname_slug}}-ci",
-    "deploy_project_url": "https://github.com/makinacorpus/terra{{cookiecutter.app_suffix}}-deploy.git",
+    "deploy_project_url": "https://github.com/Terralego/terra{{cookiecutter.app_suffix}}-deploy.git",
     "deploy_project_dir": "local/{{cookiecutter.deploy_project_url.split('/')[-1].replace('.git', '')}}",
     "docker_registry": "registry.{{cookiecutter.infra_domain}}",
     "simple_docker_image": "{{cookiecutter.git_ns.split('/')[0].lower()}}/{{cookiecutter.lname}}{{cookiecutter.app_suffix.replace('-', '')}}",
